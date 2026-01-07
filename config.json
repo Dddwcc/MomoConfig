@@ -29,7 +29,7 @@
       "tag": "my_airport",
       "type": "remote",
       "format": "clash",
-      "url": "https://sub1.sntp.me/baseStr?token=7c2c577cf83b1a31ba897f91c4fb4af4&sign=879ff9b652510a7436a5cf1c5d39dc1b&ts=1767234597&nonce=d76e634ba700453746e20bafc9f92bfd&v=v2&timestamp=2948",
+
       "interval": "12h",
       "path": "./airport_nodes.yaml",
       "health_check": { "enable": true, "url": "http://www.gstatic.com/generate_204", "interval": "10m" }
