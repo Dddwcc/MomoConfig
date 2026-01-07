@@ -8,50 +8,83 @@
     "rules": [
       { "outbound": "any", "server": "dns_fakeip" },
       { "clash_mode": "Direct", "server": "dns_direct" },
-      { "clash_mode": "Global", "server": "dns_proxy" }
+      { "domain_suffix": ["sntp.me", "githubusercontent.com"], "server": "dns_direct" }
     ],
     "fakeip": { "enabled": true, "inet4_range": "198.18.0.0/15" },
     "final": "dns_proxy"
   },
+
+  // 【核心修复：Momo 插件强制要求】
+  "inbounds": [
+    {
+      "type": "dns",
+      "tag": "dns-in",
+      "listen": "127.0.0.1",
+      "listen_port": 6450
+    }
+  ],
+
+  "outbound_providers": [
+    {
+      "tag": "my_airport",
+      "type": "remote",
+      "format": "clash",
+      "url": "https://sub1.sntp.me/baseStr?token=7c2c577cf83b1a31ba897f91c4fb4af4&sign=879ff9b652510a7436a5cf1c5d39dc1b&ts=1767234597&nonce=d76e634ba700453746e20bafc9f92bfd&v=v2&timestamp=2948",
+      "interval": "12h",
+      "path": "./airport_nodes.yaml",
+      "health_check": { "enable": true, "url": "http://www.gstatic.com/generate_204", "interval": "10m" }
+    }
+  ],
+
   "outbounds": [
-    { "type": "selector", "tag": "🚀 节点选择", "outbounds": ["♻️ 自动测速", "💰 低倍率专区", "🎥 Emby服务", "🇭🇰 香港节点", "🇨🇳 台湾节点", "🇯🇵 日本节点", "🇸🇬 新加坡节点", "🇺🇸 美国节点", "direct"] },
-    
-    // 自动测速组
-    { "type": "urltest", "tag": "♻️ 自动测速", "outbounds": ["{all}"], "interval": "10m" },
+    {
+      "type": "selector",
+      "tag": "🚀 节点选择",
+      "providers": ["my_airport"],
+      "outbounds": ["💰 低倍率专区", "♻️ 自动测速", "🇭🇰 香港节点", "🇨🇳 台湾节点", "🇺🇸 美国节点", "direct"]
+    },
+    // 【需求实现】低倍率 & Emby 组
+    { "type": "selector", "tag": "💰 低倍率专区", "providers": ["my_airport"], "filter": [{ "action": "include", "keywords": ["(?i)0\\.[1-9]x"] }] },
+    { "type": "selector", "tag": "🎥 Emby服务", "providers": ["my_airport"], "filter": [{ "action": "include", "keywords": ["(?i)0\\.[1-9]x"] }] },
 
-    // 💰 低倍率专区 (通过正则自动筛选 0.x 节点)
-    { "type": "selector", "tag": "💰 低倍率专区", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["(?i)0\\.[1-9]x"] }] },
+    // 【满血分流组】低倍率优先
+    { "type": "selector", "tag": "🤖 OpenAI", "outbounds": ["💰 低倍率专区", "🇺🇸 美国节点", "🇸🇬 新加坡节点", "🚀 节点选择"] },
+    { "type": "selector", "tag": "🎬 视频服务", "outbounds": ["💰 低倍率专区", "🇭🇰 香港节点", "🇨🇳 台湾节点", "🇺🇸 美国节点", "🚀 节点选择"] },
+    { "type": "selector", "tag": "📲 社交软件", "outbounds": ["💰 低倍率专区", "🚀 节点选择", "🇭🇰 香港节点", "🇺🇸 美国节点"] },
 
-    // 🎥 Emby服务 (强制锁定低倍率，专门给公益服用)
-    { "type": "selector", "tag": "🎥 Emby服务", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["(?i)0\\.[1-9]x"] }] },
-
-    // 地区分组 (基于常见机场命名规范)
-    { "type": "selector", "tag": "🇭🇰 香港节点", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["HK|香港|HongKong"] }] },
-    { "type": "selector", "tag": "🇨🇳 台湾节点", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["TW|台湾|Taiwan"] }] },
-    { "type": "selector", "tag": "🇯🇵 日本节点", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["JP|日本|Japan"] }] },
-    { "type": "selector", "tag": "🇸🇬 新加坡节点", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["SG|新加坡|Singapore"] }] },
-    { "type": "selector", "tag": "🇺🇸 美国节点", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["US|美国|States"] }] },
+    // 地区组
+    { "type": "urltest", "tag": "♻️ 自动测速", "providers": ["my_airport"], "interval": "10m" },
+    { "type": "selector", "tag": "🇭🇰 香港节点", "providers": ["my_airport"], "filter": [{ "action": "include", "keywords": ["HK|香港"] }] },
+    { "type": "selector", "tag": "🇨🇳 台湾节点", "providers": ["my_airport"], "filter": [{ "action": "include", "keywords": ["TW|台湾"] }] },
+    { "type": "selector", "tag": "🇺🇸 美国节点", "providers": ["my_airport"], "filter": [{ "action": "include", "keywords": ["US|美国"] }] },
 
     { "type": "direct", "tag": "direct" },
     { "type": "dns", "tag": "dns-out" },
     { "type": "block", "tag": "block" }
   ],
+
   "route": {
     "rule_set": [
       { "tag": "ads", "type": "remote", "format": "binary", "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs" },
       { "tag": "openai", "type": "remote", "format": "binary", "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-openai.srs" },
+      { "tag": "youtube", "type": "remote", "format": "binary", "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-youtube.srs" },
+      { "tag": "netflix", "type": "remote", "format": "binary", "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-netflix.srs" },
+      { "tag": "telegram", "type": "remote", "format": "binary", "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-telegram.srs" },
       { "tag": "cn_site", "type": "remote", "format": "binary", "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs" },
       { "tag": "cn_ip", "type": "remote", "format": "binary", "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs" }
     ],
     "rules": [
+      // 必须将 dns-in 入口导向 dns-out
+      { "inbound": "dns-in", "outbound": "dns-out" },
       { "protocol": "dns", "outbound": "dns-out" },
-      // 【需求实现】Emby 公益服地址强制分流
+      // Emby 分流
       { "domain_suffix": ["pe.cn2gias.uk"], "outbound": "🎥 Emby服务" },
-      // 基础规则
       { "rule_set": "ads", "outbound": "block" },
-      { "rule_set": "openai", "outbound": "🇺🇸 美国节点" },
-      { "rule_set": "cn_site", "outbound": "direct" },
-      { "rule_set": "cn_ip", "outbound": "direct" }
+      { "rule_set": "openai", "outbound": "🤖 OpenAI" },
+      { "rule_set": ["youtube", "netflix"], "outbound": "🎬 视频服务" },
+      { "rule_set": "telegram", "outbound": "📲 社交软件" },
+      { "rule_set": ["cn_site", "cn_ip"], "outbound": "direct" },
+      { "geoip": ["private"], "outbound": "direct" }
     ],
     "final": "🚀 节点选择",
     "auto_detect_interface": true
