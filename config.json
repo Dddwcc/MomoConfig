@@ -1,0 +1,59 @@
+{
+  "dns": {
+    "servers": [
+      { "tag": "dns_proxy", "address": "https://8.8.8.8/dns-query", "detour": "🚀 节点选择" },
+      { "tag": "dns_direct", "address": "https://223.5.5.5/dns-query", "detour": "direct" },
+      { "tag": "dns_fakeip", "address": "fakeip" }
+    ],
+    "rules": [
+      { "outbound": "any", "server": "dns_fakeip" },
+      { "clash_mode": "Direct", "server": "dns_direct" },
+      { "clash_mode": "Global", "server": "dns_proxy" }
+    ],
+    "fakeip": { "enabled": true, "inet4_range": "198.18.0.0/15" },
+    "final": "dns_proxy"
+  },
+  "outbounds": [
+    { "type": "selector", "tag": "🚀 节点选择", "outbounds": ["♻️ 自动测速", "💰 低倍率专区", "🎥 Emby服务", "🇭🇰 香港节点", "🇨🇳 台湾节点", "🇯🇵 日本节点", "🇸🇬 新加坡节点", "🇺🇸 美国节点", "direct"] },
+    
+    // 自动测速组
+    { "type": "urltest", "tag": "♻️ 自动测速", "outbounds": ["{all}"], "interval": "10m" },
+
+    // 💰 低倍率专区 (通过正则自动筛选 0.x 节点)
+    { "type": "selector", "tag": "💰 低倍率专区", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["(?i)0\\.[1-9]x"] }] },
+
+    // 🎥 Emby服务 (强制锁定低倍率，专门给公益服用)
+    { "type": "selector", "tag": "🎥 Emby服务", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["(?i)0\\.[1-9]x"] }] },
+
+    // 地区分组 (基于常见机场命名规范)
+    { "type": "selector", "tag": "🇭🇰 香港节点", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["HK|香港|HongKong"] }] },
+    { "type": "selector", "tag": "🇨🇳 台湾节点", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["TW|台湾|Taiwan"] }] },
+    { "type": "selector", "tag": "🇯🇵 日本节点", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["JP|日本|Japan"] }] },
+    { "type": "selector", "tag": "🇸🇬 新加坡节点", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["SG|新加坡|Singapore"] }] },
+    { "type": "selector", "tag": "🇺🇸 美国节点", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["US|美国|States"] }] },
+
+    { "type": "direct", "tag": "direct" },
+    { "type": "dns", "tag": "dns-out" },
+    { "type": "block", "tag": "block" }
+  ],
+  "route": {
+    "rule_set": [
+      { "tag": "ads", "type": "remote", "format": "binary", "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs" },
+      { "tag": "openai", "type": "remote", "format": "binary", "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-openai.srs" },
+      { "tag": "cn_site", "type": "remote", "format": "binary", "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs" },
+      { "tag": "cn_ip", "type": "remote", "format": "binary", "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs" }
+    ],
+    "rules": [
+      { "protocol": "dns", "outbound": "dns-out" },
+      // 【需求实现】Emby 公益服地址强制分流
+      { "domain_suffix": ["pe.cn2gias.uk"], "outbound": "🎥 Emby服务" },
+      // 基础规则
+      { "rule_set": "ads", "outbound": "block" },
+      { "rule_set": "openai", "outbound": "🇺🇸 美国节点" },
+      { "rule_set": "cn_site", "outbound": "direct" },
+      { "rule_set": "cn_ip", "outbound": "direct" }
+    ],
+    "final": "🚀 节点选择",
+    "auto_detect_interface": true
+  }
+}
